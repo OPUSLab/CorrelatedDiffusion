@@ -1,0 +1,19 @@
+__pycache__/
+.ipynb_checkpoints/
+
+*.pt
+*.pth
+*.npy
+*.npz
+*.mat
+*.h5
+*.hdf5
+
+data/*
+!data/README.md
+
+# Allow dataset directories
+!L50_Results_noising_100000MCS_81beta_s46_nobias/
+!L50_Results_noising_100000MCS_81beta_s46_nobias/**
+!3d_spin_glass_dataset_L10/
+!3d_spin_glass_dataset_L10/**
