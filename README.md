@@ -25,6 +25,7 @@ The main benchmark systems are:
 notebooks/
     generalizedDiff-2DferroIsing-independentLimit.ipynb
     generalizedDiff-2DferroIsing-correlated.ipynb
+    generalizedDiff-3DspinGlass-independentLimit.ipynb
     generalizedDiff-3DspinGlass-correlated.ipynb
 L50_Results_noising_100000MCS_81beta_s46_nobias/
     Trial_*.mat
@@ -46,9 +47,30 @@ Independent diffusion baseline on the 2D ferromagnetic Ising model (`50 x 50` la
 
 Correlated diffusion on the 2D ferromagnetic Ising model using interaction-aware Gibbs dynamics.
 
+#### `generalizedDiff-3DspinGlass-independentLimit.ipynb`
+
+Independent diffusion baseline on the 3D Edwards-Anderson spin glass (`10 x 10 x 10` lattice), the `J = 0` counterpart to the correlated 3D experiment.
+
 #### `generalizedDiff-3DspinGlass-correlated.ipynb`
 
 Correlated diffusion on the 3D Edwards-Anderson spin glass (`10 x 10 x 10` lattice).
+
+### Performance and memory settings
+
+The reverse (inference) process in all four notebooks is GPU-accelerated: the per-spin Gibbs sweep is
+replaced by an equivalent group-wise vectorized sweep, and the reverse pass is batched over inference
+systems on the device. The forward noising process and the training loop are unchanged. Three settings
+in the config cell control this behavior:
+
+| setting | default | meaning |
+| --- | --- | --- |
+| `use_hw_accel` | `True` | Enables the vectorized sweep and the batched reverse pass. Set to `False` to fall back to the original per-spin, per-system implementation, which is retained in the notebook. |
+| `sweep_mode` | `'raster'` | Update order for the grouped sweep. `'raster'` preserves the sequential update order of the original per-spin sweep. `'checkerboard'` (2D only) is a valid but different sweep order, and is opt-in. |
+| `rev_system_chunk` | `None` | Processes the inference systems in chunks, so peak memory scales with the chunk size rather than the total number of systems. `None` processes all systems at once and matches the unchunked path exactly. Lower it (for example to `50`) if a large run runs out of GPU memory. |
+
+With these defaults the notebooks run the same algorithm, at the same hyperparameters, as the original
+per-spin implementation. Each notebook also includes an optional self-check cell that compares the
+accelerated sweep against the original per-spin sweep directly.
 
 ## Environment
 
@@ -83,7 +105,13 @@ jupyter notebook notebooks/generalizedDiff-2DferroIsing-independentLimit.ipynb
 jupyter notebook notebooks/generalizedDiff-2DferroIsing-correlated.ipynb
 ```
 
-### 3. Correlated 3D spin-glass experiment
+### 3. Independent 3D spin-glass baseline
+
+```bash
+jupyter notebook notebooks/generalizedDiff-3DspinGlass-independentLimit.ipynb
+```
+
+### 4. Correlated 3D spin-glass experiment
 
 ```bash
 jupyter notebook notebooks/generalizedDiff-3DspinGlass-correlated.ipynb
@@ -103,6 +131,15 @@ The conditional estimator is a 2-hidden-layer MLP with:
 * optimizer: Adam
 * learning rate: `1e-6`
 * batch size: 512
+
+## Outputs
+
+Each notebook ends with a cell that saves the full reverse-diffusion trajectory to a single `.npz` file
+in the working directory. It contains one array per diffusion step, `states_t0` through `states_t100`,
+each of shape `(num_systems_inference, N)` and stored as `int8` in `{-1, +1}`, alongside the `timesteps`,
+`num_systems_inference` and `N` metadata arrays. The filename records the run configuration, for example
+`ferro2D_diff100steps_100samples_10chains_corr.npz` for 2D and
+`EA3D_diff100steps_100samples_10chains_corr.npz` for 3D.
 
 ## Notes
 
